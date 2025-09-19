@@ -2,19 +2,82 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MedicalCard } from "@/components/medical-card";
-import { Heart, Shield, Users } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Heart, Shield, Users, AlertCircle, Info } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { authenticateAdmin, authenticateParent, demoCredentials } from "@/data/authData";
+import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [userType, setUserType] = useState<"admin" | "parent">("admin");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
+  const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // For demo purposes, navigate to dashboard
-    navigate("/dashboard");
+    setIsLoading(true);
+
+    try {
+      if (userType === "admin") {
+        const adminUser = authenticateAdmin(username, password);
+        if (adminUser) {
+          login(adminUser, "admin");
+          toast({
+            title: "Login Berhasil",
+            description: `Selamat datang, ${adminUser.name}`,
+          });
+          navigate("/dashboard");
+        } else {
+          toast({
+            title: "Login Gagal",
+            description: "Username atau password admin salah",
+            variant: "destructive",
+          });
+        }
+      } else {
+        const parentUser = authenticateParent(username, password);
+        if (parentUser) {
+          login(parentUser, "parent");
+          toast({
+            title: "Login Berhasil", 
+            description: `Selamat datang, ${parentUser.parentName}`,
+          });
+          navigate(`/view/${parentUser.accessToken}`);
+        } else {
+          toast({
+            title: "Login Gagal",
+            description: "Username atau password orang tua salah",
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Terjadi kesalahan saat login",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fillDemoCredentials = (type: "admin" | "parent") => {
+    if (type === "admin") {
+      setUsername(demoCredentials.admin.username);
+      setPassword(demoCredentials.admin.password);
+      setUserType("admin");
+    } else {
+      setUsername(demoCredentials.parent.username);
+      setPassword(demoCredentials.parent.password);
+      setUserType("parent");
+    }
   };
 
   return (
@@ -29,15 +92,70 @@ const Login = () => {
           <p className="text-muted-foreground mt-1">Sistem Pemantauan Tumbuh Kembang Anak</p>
         </div>
 
+        {/* Demo Credentials Info */}
+        <Alert className="mb-6 border-primary/20 bg-primary/5">
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <div className="space-y-2">
+              <p className="font-medium">Kredensial Demo:</p>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fillDemoCredentials("admin")}
+                  className="text-left justify-start"
+                >
+                  <Shield className="h-3 w-3 mr-1" />
+                  Kader Demo
+                </Button>
+                <Button
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => fillDemoCredentials("parent")}
+                  className="text-left justify-start"
+                >
+                  <Users className="h-3 w-3 mr-1" />
+                  Ortu Demo
+                </Button>
+              </div>
+            </div>
+          </AlertDescription>
+        </Alert>
+
         {/* Login Form */}
-        <MedicalCard title="Login Kader" description="Masukkan kredensial Anda untuk mengakses sistem" gradient>
+        <MedicalCard title="Login Sistem" description="Pilih jenis akun dan masukkan kredensial Anda" gradient>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* User Type Selection */}
+            <div className="space-y-2">
+              <Label>Jenis Akun</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={userType === "admin" ? "default" : "outline"}
+                  onClick={() => setUserType("admin")}
+                  className="justify-start"
+                >
+                  <Shield className="h-4 w-4 mr-2" />
+                  Kader/Admin
+                </Button>
+                <Button
+                  type="button"
+                  variant={userType === "parent" ? "default" : "outline"}
+                  onClick={() => setUserType("parent")}
+                  className="justify-start"
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  Orang Tua
+                </Button>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
               <Input 
                 id="username"
                 type="text"
-                placeholder="Masukkan username"
+                placeholder={userType === "admin" ? "Username kader/admin" : "Username orang tua"}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -59,14 +177,21 @@ const Login = () => {
             <Button 
               type="submit" 
               className="w-full bg-gradient-primary hover:bg-primary-hover mt-6"
+              disabled={isLoading}
             >
-              <Shield className="h-4 w-4 mr-2" />
-              Masuk ke Sistem
+              {isLoading ? (
+                <>Loading...</>
+              ) : (
+                <>
+                  <Shield className="h-4 w-4 mr-2" />
+                  Masuk ke Sistem
+                </>
+              )}
             </Button>
           </form>
         </MedicalCard>
 
-        {/* Features */}
+        {/* Additional Info */}
         <div className="mt-6 text-center">
           <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
             <div className="flex items-center gap-1">

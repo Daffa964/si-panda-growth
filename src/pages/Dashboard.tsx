@@ -3,12 +3,27 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Plus, Activity, Users, TrendingUp, Heart, Calendar } from "lucide-react";
+import { Search, Plus, Activity, Users, TrendingUp, Heart, Calendar, LogOut, ExternalLink } from "lucide-react";
 import { seedChildren, formatAge, getStatsFromChildren } from "@/data/seedData";
+import { useAuth } from "@/context/AuthContext";
+import { AdminUser } from "@/data/authData";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const { currentUser, userType, logout } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  // Redirect if not admin
+  if (userType !== "admin") {
+    navigate("/login");
+    return null;
+  }
+
+  const adminUser = currentUser as AdminUser;
   
   // Filter children based on search term
   const filteredChildren = seedChildren.filter(child =>
@@ -27,6 +42,43 @@ const Dashboard = () => {
     return daysDiff >= 28; // Due for monthly checkup
   }).length;
 
+  const handleViewDetail = (childId: string) => {
+    navigate(`/dashboard/children/${childId}`);
+  };
+
+  const handleGenerateParentLink = (child: any) => {
+    const parentLink = `${window.location.origin}/view/${child.secureToken}`;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(parentLink).then(() => {
+      toast({
+        title: "Link Berhasil Disalin",
+        description: `Link untuk ${child.parentName} telah disalin ke clipboard`,
+      });
+    }).catch(() => {
+      toast({
+        title: "Link Orang Tua",
+        description: parentLink,
+      });
+    });
+  };
+
+  const handleAddNewChild = () => {
+    toast({
+      title: "Fitur Dalam Pengembangan",
+      description: "Fitur tambah anak baru akan segera tersedia",
+    });
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+    toast({
+      title: "Logout Berhasil",
+      description: "Anda telah keluar dari sistem",
+    });
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -37,9 +89,23 @@ const Dashboard = () => {
               <h1 className="text-2xl font-bold">Dashboard SI-PANDA+</h1>
               <p className="text-primary-foreground/80">Sistem Pemantauan Tumbuh Kembang Anak</p>
             </div>
-            <div className="flex items-center gap-2">
-              <Heart className="h-5 w-5" />
-              <span className="text-sm">Kader: Bu Siti Nurhaliza</span>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Heart className="h-5 w-5" />
+                <div className="text-right">
+                  <div className="text-sm font-medium">{adminUser.name}</div>
+                  <div className="text-xs text-primary-foreground/70">{adminUser.role === "kader" ? "Kader" : "Petugas"}</div>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleLogout}
+                className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10"
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
             </div>
           </div>
         </div>
@@ -106,7 +172,7 @@ const Dashboard = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button className="bg-gradient-primary hover:bg-primary-hover gap-2">
+            <Button onClick={handleAddNewChild} className="bg-gradient-primary hover:bg-primary-hover gap-2">
               <Plus className="h-4 w-4" />
               Tambah Anak Baru
             </Button>
@@ -153,10 +219,20 @@ const Dashboard = () => {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-2 justify-end">
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleViewDetail(child.id)}
+                        >
                           Lihat Detail
                         </Button>
-                        <Button variant="outline" size="sm" className="text-accent">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleGenerateParentLink(child)}
+                          className="text-accent hover:text-accent-foreground hover:bg-accent"
+                        >
+                          <ExternalLink className="h-3 w-3 mr-1" />
                           Link Ortu
                         </Button>
                       </div>
