@@ -3,17 +3,30 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Plus, Activity, Users, TrendingUp, Heart } from "lucide-react";
-
-// Mock data for demonstration
-const mockChildren = [
-  { id: 1, name: "Andi Pratama", age: "2 tahun 3 bulan", status: "normal" as const, lastCheck: "15 Mar 2024" },
-  { id: 2, name: "Sari Indah", age: "1 tahun 8 bulan", status: "berisiko" as const, lastCheck: "12 Mar 2024" },
-  { id: 3, name: "Budi Santoso", age: "3 tahun 1 bulan", status: "gizi-kurang" as const, lastCheck: "10 Mar 2024" },
-  { id: 4, name: "Maya Putri", age: "2 tahun 6 bulan", status: "normal" as const, lastCheck: "14 Mar 2024" },
-];
+import { Search, Plus, Activity, Users, TrendingUp, Heart, Calendar } from "lucide-react";
+import { seedChildren, formatAge, getStatsFromChildren } from "@/data/seedData";
+import { useState } from "react";
 
 const Dashboard = () => {
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  // Filter children based on search term
+  const filteredChildren = seedChildren.filter(child =>
+    child.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    child.parentName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Get statistics from current data
+  const stats = getStatsFromChildren(seedChildren);
+  
+  // Calculate today's scheduled checkups (mock data)
+  const todayCheckups = seedChildren.filter(child => {
+    const lastCheck = new Date(child.lastCheckDate);
+    const today = new Date();
+    const daysDiff = Math.floor((today.getTime() - lastCheck.getTime()) / (1000 * 60 * 60 * 24));
+    return daysDiff >= 28; // Due for monthly checkup
+  }).length;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -26,7 +39,7 @@ const Dashboard = () => {
             </div>
             <div className="flex items-center gap-2">
               <Heart className="h-5 w-5" />
-              <span className="text-sm">Kader: Bu Siti</span>
+              <span className="text-sm">Kader: Bu Siti Nurhaliza</span>
             </div>
           </div>
         </div>
@@ -39,7 +52,7 @@ const Dashboard = () => {
             <div className="flex items-center gap-3">
               <Users className="h-8 w-8 text-primary" />
               <div>
-                <div className="text-2xl font-bold">142</div>
+                <div className="text-2xl font-bold">{stats.total}</div>
                 <p className="text-xs text-muted-foreground">Terdaftar</p>
               </div>
             </div>
@@ -49,8 +62,8 @@ const Dashboard = () => {
             <div className="flex items-center gap-3">
               <TrendingUp className="h-8 w-8 text-success" />
               <div>
-                <div className="text-2xl font-bold text-success">124</div>
-                <p className="text-xs text-muted-foreground">87%</p>
+                <div className="text-2xl font-bold text-success">{stats.normal}</div>
+                <p className="text-xs text-muted-foreground">{stats.normalPercentage}%</p>
               </div>
             </div>
           </MedicalCard>
@@ -59,18 +72,18 @@ const Dashboard = () => {
             <div className="flex items-center gap-3">
               <Activity className="h-8 w-8 text-warning" />
               <div>
-                <div className="text-2xl font-bold text-warning">18</div>
-                <p className="text-xs text-muted-foreground">13%</p>
+                <div className="text-2xl font-bold text-warning">{stats.needAttention}</div>
+                <p className="text-xs text-muted-foreground">{stats.needAttentionPercentage}%</p>
               </div>
             </div>
           </MedicalCard>
           
-          <MedicalCard title="Pemeriksaan Hari Ini" gradient>
+          <MedicalCard title="Jadwal Hari Ini" gradient>
             <div className="flex items-center gap-3">
-              <Heart className="h-8 w-8 text-accent" />
+              <Calendar className="h-8 w-8 text-accent" />
               <div>
-                <div className="text-2xl font-bold text-accent">8</div>
-                <p className="text-xs text-muted-foreground">Dijadwalkan</p>
+                <div className="text-2xl font-bold text-accent">{todayCheckups}</div>
+                <p className="text-xs text-muted-foreground">Perlu Kontrol</p>
               </div>
             </div>
           </MedicalCard>
@@ -78,8 +91,8 @@ const Dashboard = () => {
 
         {/* Main Content */}
         <MedicalCard 
-          title="Daftar Anak" 
-          description="Kelola data pertumbuhan dan perkembangan anak"
+          title={`Daftar Anak (${filteredChildren.length} dari ${stats.total})`}
+          description="Kelola data pertumbuhan dan perkembangan anak di wilayah Anda"
           className="w-full"
         >
           {/* Controls */}
@@ -87,8 +100,10 @@ const Dashboard = () => {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input 
-                placeholder="Cari nama anak..." 
+                placeholder="Cari nama anak atau orang tua..." 
                 className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <Button className="bg-gradient-primary hover:bg-primary-hover gap-2">
@@ -104,30 +119,60 @@ const Dashboard = () => {
                 <TableRow>
                   <TableHead>Nama Anak</TableHead>
                   <TableHead>Usia</TableHead>
+                  <TableHead>Orang Tua</TableHead>
                   <TableHead>Status Gizi</TableHead>
                   <TableHead>Pemeriksaan Terakhir</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockChildren.map((child) => (
+                {filteredChildren.map((child) => (
                   <TableRow key={child.id} className="hover:bg-muted/50">
-                    <TableCell className="font-medium">{child.name}</TableCell>
-                    <TableCell>{child.age}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={child.status} />
+                    <TableCell className="font-medium">
+                      <div>
+                        <div className="font-semibold">{child.name}</div>
+                        <div className="text-xs text-muted-foreground">{child.gender === "L" ? "Laki-laki" : "Perempuan"}</div>
+                      </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{child.lastCheck}</TableCell>
+                    <TableCell>{formatAge(child.birthDate)}</TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{child.parentName}</div>
+                        <div className="text-xs text-muted-foreground">{child.phone}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <StatusBadge status={child.currentStatus} />
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(child.lastCheckDate).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short', 
+                        year: 'numeric'
+                      })}
+                    </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm">
-                        Lihat Detail
-                      </Button>
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline" size="sm">
+                          Lihat Detail
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-accent">
+                          Link Ortu
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </div>
+
+          {filteredChildren.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Tidak ada data anak yang sesuai dengan pencarian.</p>
+            </div>
+          )}
         </MedicalCard>
       </div>
     </div>
